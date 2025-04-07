@@ -13,7 +13,7 @@ import {
   useToast
 } from "@/components/ui/use-toast";
 import { Switch } from "@/components/ui/switch"; 
-import { SendEmail, SendSMS } from "@/api/integrations"; 
+import { SendEmail, SendSMS, SendWhatsApp } from "@/api/integrations"; 
 import { Session } from "@/api/entities"; 
 import { Player } from "@/api/entities"; 
 import { format } from "date-fns"; 
@@ -96,6 +96,53 @@ export default function SettingsPage() {
         variant: "destructive"
       });
     });
+  };
+
+  const generateNotificationBody = (player, sessionHost, gameDateTime, gameTime, settings, sessionPlayers) => {
+    return `Hi ${player.name} 👋,
+
+This is a quick reminder about our upcoming poker game night! 🎉🃏
+
+🎲 Game Details:
+📅 Date: ${gameDateTime ? format(gameDateTime, 'MMMM d, yyyy') : 'No date'}
+⏰ Time: ${gameTime}
+🏠 Host: ${sessionHost.name}
+📱 Contact: ${sessionHost.phone || 'Not provided'}
+📧 Email: ${sessionHost.email || 'Not provided'}
+
+💰 Game Rules:
+• Big Blind: ₪${settings.big_blind}
+• Small Blind: ₪${settings.big_blind / 2}
+• Buy-in Range: ₪${settings.minimum_buyin} - ₪${settings.maximum_buyin}
+• Maximum Buy-in per Session: ₪${settings.session_buyin_limit}
+• Chips per ₪1: ${settings.chip_conversion_rate}
+• Maximum Players: ${settings.max_players}
+
+👥 Registered Players (${sessionPlayers.length}/${settings.max_players}):
+${sessionPlayers.map(p => `• ${p.name}`).join('\n')}
+
+💳 Payment:
+• PayBox Link: ${settings.paybox_link}
+• Send your buy-in before the game starts
+
+Please make sure to arrive on time ⏱️ — the stakes are high and the fun is guaranteed! 😄
+
+See you at the table! 🎲
+
+Best regards,
+${settings.contact_name} 🧑‍💼
+📱 ${settings.contact_phone}
+📧 ${settings.contact_email}
+
+🌐 Join the game:
+https://app--poker-cash-flow-ccf0fb63.base44.app/`;
+  };
+
+  const generateSMSBody = (player, sessionHost, gameDateTime, gameTime) => {
+    return `Poker Night Reminder!
+Date: ${gameDateTime ? format(gameDateTime, 'MMM d') : 'TBD'} at ${gameTime}
+Host: ${sessionHost.name} (${sessionHost.phone || 'No phone'})
+Please confirm your attendance.`;
   };
 
   return (
@@ -250,8 +297,8 @@ export default function SettingsPage() {
                   <p className="text-sm text-gray-500">WhatsApp reminders before games (coming soon)</p>
                 </div>
                 <Switch
-                  checked={false}
-                  disabled={true}
+                  checked={settings.whatsapp_notification_enabled}
+                  disabled={false}
                   onCheckedChange={(checked) =>
                     setSettings({
                       ...settings,
@@ -268,7 +315,7 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={settings.sms_notification_enabled}
-                  disabled={true}
+                  disabled={false}
                   onCheckedChange={(checked) =>
                     setSettings({
                       ...settings,
@@ -311,74 +358,140 @@ export default function SettingsPage() {
                           return;
                         }
 
-                        const players = await Player.list({
-                          id: { $in: nextSession.players }
-                        });
+                        // Get only the players registered for this session
+                        const registeredPlayers = await Player.list();
+                        const sessionPlayers = registeredPlayers.filter(player => 
+                          nextSession.players.includes(player.id)
+                        );
 
-                        const emailsSent = [];
+                        // Get the host information
+                        const sessionHost = registeredPlayers.find(player => player.id === nextSession.host);
+                        if (!sessionHost) {
+                          toast({
+                            title: "No host assigned",
+                            description: "Please assign a host to the session before sending notifications",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+
+                        const notificationsSent = {
+                          email: [],
+                          sms: [],
+                          whatsapp: []
+                        };
                         
                         const gameTime = settings.game_schedule.split(" ")[1];
                         const [hours, minutes] = gameTime.split(":");
                         const gameDateTime = new Date(nextSession.date);
                         gameDateTime.setHours(parseInt(hours), parseInt(minutes), 0);
 
-                        // First check if we have any players with emails
-                        const playersWithEmail = players.filter(player => player.email);
-                        if (playersWithEmail.length === 0) {
+                        // Check if we have any players with contact information
+                        const playersWithContacts = sessionPlayers.filter(player => 
+                          player.email || player.phone
+                        );
+
+                        if (playersWithContacts.length === 0) {
                           toast({
-                            title: "No players with email",
-                            description: "None of the registered players have an email address set.",
+                            title: "No players with contact info",
+                            description: "None of the registered players have contact information set.",
                             variant: "destructive"
                           });
                           return;
                         }
+                        
+                        for (const player of sessionPlayers) {
+                          const notificationBody = generateNotificationBody(
+                            player,
+                            sessionHost,
+                            gameDateTime,
+                            gameTime,
+                            settings,
+                            sessionPlayers
+                          );
 
-                        for (const player of players) {
-                          if (settings.email_notification_enabled && player.email) {
+                          // Send Email Notifications
+                          if (settings.email_notification_enabled && // Group level
+                              player.notifications_enabled && // Player level
+                              player.email) { // Channel level (has email)
                             try {
                               await SendEmail({
                                 to: player.email,
                                 subject: "♠️ Upcoming Poker Game Notification ♥️",
-                                body: `Hi ${player.name} 👋,
-
-This is a quick reminder about our upcoming poker game night! 🎉🃏
-Here are the details:
-
-📅 Date: ${gameDateTime ? format(gameDateTime, 'MMMM d, yyyy') : 'No date'}
-⏰ Time: ${gameTime}
-💸 Buy-in Range: ₪${settings.minimum_buyin} - ₪${settings.maximum_buyin}
-
-Please make sure to arrive on time ⏱️ — the stakes are high and the fun is guaranteed! 😄
-
-See you at the table!
-
-Best regards,
-${settings.contact_name} 🧑‍💼
-https://app--poker-cash-flow-ccf0fb63.base44.app/`
+                                body: notificationBody
                               });
-                              emailsSent.push(player.name);
-                              console.log(`Demo Mode: Email sent to ${player.name} at ${player.email}`);
+                              notificationsSent.email.push(player.name);
                             } catch (error) {
                               console.error(`Failed to send email to ${player.name}:`, error);
                             }
                           }
+                          
+                          // Send WhatsApp Notifications
+                          if (settings.whatsapp_notification_enabled && // Group level
+                              player.notifications_enabled && // Player level
+                              player.phone) { // Channel level (has phone)
+                            try {
+                              await SendWhatsApp({
+                                to: player.phone,
+                                body: notificationBody
+                              });
+                              notificationsSent.whatsapp.push(player.name);
+                            } catch (error) {
+                              console.error(`Failed to send WhatsApp message to ${player.name}:`, error);
+                            }
+                          }
+
+                          // Send SMS Notifications
+                          if (settings.sms_notification_enabled && // Group level
+                              player.notifications_enabled && // Player level
+                              player.phone) { // Channel level (has phone)
+                            try {
+                              await SendSMS({
+                                to: player.phone,
+                                body: generateSMSBody(
+                                  player,
+                                  sessionHost,
+                                  gameDateTime,
+                                  gameTime
+                                )
+                              });
+                              notificationsSent.sms.push(player.name);
+                            } catch (error) {
+                              console.error(`Failed to send SMS to ${player.name}:`, error);
+                            }
+                          }
                         }
 
-                        if (emailsSent.length > 0) {
+                        // Update the summary message to include notification preferences info
+                        const notificationSummary = [];
+                        if (notificationsSent.email.length > 0) {
+                          notificationSummary.push(`Email: ${notificationsSent.email.length} player(s)`);
+                        }
+                        if (notificationsSent.whatsapp.length > 0) {
+                          notificationSummary.push(`WhatsApp: ${notificationsSent.whatsapp.length} player(s)`);
+                        }
+                        if (notificationsSent.sms.length > 0) {
+                          notificationSummary.push(`SMS: ${notificationsSent.sms.length} player(s)`);
+                        }
+
+                        if (notificationSummary.length > 0) {
                           toast({
-                            title: "Test notifications sent",
-                            description: `Email notifications sent to: ${emailsSent.join(", ")}.\nWhatsApp and SMS notifications are not available in demo mode.`,
+                            title: "Notifications Sent",
+                            description: `Successfully sent notifications to:\n${notificationSummary.join('\n')}`,
                             variant: "success"
                           });
                         } else {
                           toast({
                             title: "No notifications sent",
-                            description: "No emails were sent. Make sure players have email addresses and notifications are enabled.",
+                            description: "No notifications were sent. This could be because:\n" +
+                              "• Players haven't enabled notifications\n" +
+                              "• Missing contact information\n" +
+                              "• Notification channels are disabled in settings",
                             variant: "destructive"
                           });
                         }
                       } catch (error) {
-                        console.error("Error sending test notifications:", error);
+                        console.error("Error sending notifications:", error);
                         toast({
                           title: "Error",
                           description: "Failed to send notifications. Please try again.",

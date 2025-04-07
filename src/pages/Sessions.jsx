@@ -181,7 +181,6 @@ export default function Sessions() {
   };
 
   const startSession = async (sessionId) => {
-    debugger
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
 

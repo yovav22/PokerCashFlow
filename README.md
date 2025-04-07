@@ -30,9 +30,10 @@ A comprehensive poker game management application built with React and Vite. Tra
 
 - 📧 Notifications System
   - Email notifications for upcoming games
+  - SMS notifications (optional)
+  - WhatsApp notifications (optional)
   - Configurable notification timing
-  - Customizable email templates
-  - Support for future SMS and WhatsApp integration
+  - Customizable message templates
 
 ## Getting Started
 
@@ -40,6 +41,9 @@ A comprehensive poker game management application built with React and Vite. Tra
 
 - Node.js (v14 or higher)
 - npm (v6 or higher)
+- MongoDB (v4 or higher)
+- SMTP server or email service provider
+- Twilio account (for SMS and WhatsApp, optional)
 
 ### Installation
 
@@ -54,48 +58,74 @@ A comprehensive poker game management application built with React and Vite. Tra
    npm install
    ```
 
-3. Create a `.env` file in the root directory:
-   ```env
-   # API Configuration
-   VITE_API_BASE_URL="http://localhost:3000/api"
-
-   # EmailJS Configuration (for email notifications)
-   VITE_EMAILJS_SERVICE_ID="your_service_id"
-   VITE_EMAILJS_TEMPLATE_ID="your_template_id"
-   VITE_EMAILJS_PUBLIC_KEY="your_public_key"
-   ```
-
 4. Start the development server:
    ```bash
    npm run dev
    ```
 
-### Email Notifications Setup
+### Notifications Setup
 
-To enable email notifications:
+The application supports three types of notifications:
 
-1. Sign up for a free account at [EmailJS](https://www.emailjs.com/)
-2. Create an Email Service:
-   - Go to EmailJS dashboard
-   - Click "Add New Service"
-   - Choose your email provider (Gmail, Outlook, etc.)
-   - Follow the setup instructions
+1. Email Notifications (SMTP)
+   - Requires valid SMTP credentials
+   - Supports any SMTP server (Gmail, Outlook, custom SMTP)
+   - Configure in `.env` using SMTP settings
 
-3. Create an Email Template:
-   - Go to "Email Templates"
-   - Click "Create New Template"
-   - Use these template variables:
-     ```
-     To: {{to_email}}
-     Name: {{to_name}}
-     Subject: {{subject}}
-     Message: {{message}}
-     ```
+2. SMS Notifications (via Twilio)
+   - Requires Twilio account
+   - Set up Twilio credentials in `.env`
+   - Optional feature
 
-4. Update your `.env` file with your EmailJS credentials:
-   - Service ID from "Email Services"
-   - Template ID from "Email Templates"
-   - Public Key from "Account" → "API Keys"
+3. WhatsApp Notifications (via Twilio)
+   - Requires Twilio account with WhatsApp capability
+   - Set up Twilio credentials in `.env`
+   - Optional feature
+
+#### Email Setup
+
+1. Choose your email provider (e.g., Gmail)
+2. If using Gmail:
+   - Enable 2-factor authentication
+   - Generate an App Password
+   - Use these credentials in `.env`
+
+#### SMS and WhatsApp Setup (Optional)
+
+1. Create a Twilio account at [Twilio](https://www.twilio.com)
+2. Get your Account SID and Auth Token
+3. Get a Twilio phone number
+4. For WhatsApp:
+   - Enable WhatsApp in your Twilio account
+   - Follow Twilio's WhatsApp sandbox instructions
+
+## API Endpoints
+
+### Notification Endpoints
+
+```bash
+# Email Notifications
+POST /api/notifications/email
+{
+  "to": "recipient@example.com",
+  "subject": "Game Reminder",
+  "body": "Your game starts soon!"
+}
+
+# SMS Notifications
+POST /api/notifications/sms
+{
+  "to": "+1234567890",
+  "body": "Your game starts in 2 hours!"
+}
+
+# WhatsApp Notifications
+POST /api/notifications/whatsapp
+{
+  "to": "+1234567890",
+  "body": "Your game starts in 2 hours!"
+}
+```
 
 ## Building for Production
 
@@ -119,10 +149,9 @@ Configure game rules in the Settings page:
 
 ### Environment Variables
 
+#### Client-side Variables
 - `VITE_API_BASE_URL`: Base URL for API endpoints
-- `VITE_EMAILJS_SERVICE_ID`: EmailJS service ID
-- `VITE_EMAILJS_TEMPLATE_ID`: EmailJS template ID
-- `VITE_EMAILJS_PUBLIC_KEY`: EmailJS public key
+
 
 ## Contributing
 

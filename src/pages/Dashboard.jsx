@@ -489,7 +489,7 @@ export default function Dashboard() {
                 </Card>
               )}
 
-              {statistics.highestSession && (
+              {statistics.highestSession && statistics.highestSession.player && statistics.highestSession.amount > 0 && (
                 <Card className="bg-purple-50 border-purple-200">
                   <CardHeader className="py-3">
                     <CardTitle className="text-sm text-purple-700 flex items-center gap-2">
@@ -612,6 +612,7 @@ export default function Dashboard() {
                           winRate: totalBuyIn ? (totalEarnings / totalBuyIn) * 100 : 0
                         };
                       })
+                      .filter(player => player.gamesPlayed > 0)
                       .sort((a, b) => b.totalEarnings - a.totalEarnings)
                       .map((player, index) => (
                         <TableRow 
