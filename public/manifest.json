@@ -1,0 +1,16 @@
+{
+  "name": "Poker Cashflow",
+  "short_name": "Poker Cashflow",
+  "description": "Track and manage poker game sessions and player statistics",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ef4444",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+} 
