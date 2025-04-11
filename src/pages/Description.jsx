@@ -2,17 +2,14 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Settings } from "@/api/entities";
+import { getCurrentGroup } from "@/utils/groupStorage";
 import { 
   CreditCard, 
-  DollarSign, 
   FileText, 
   AlertCircle, 
-  Award, 
   Mail, 
   Users, 
   Calendar, 
-  Clock, 
-  Link as LinkIcon,
   ExternalLink,
   Smartphone,
   Pencil,
@@ -42,9 +39,9 @@ export default function Description() {
   }, []);
 
   const loadSettings = async () => {
-    const settingsList = await Settings.list();
-    if (settingsList.length > 0) {
-      setSettings(settingsList[0]);
+    const settingsList = await Settings.getByGroup(getCurrentGroup().id);
+    if (settingsList) {
+      setSettings(settingsList);
     }
   };
 

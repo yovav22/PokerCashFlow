@@ -72,17 +72,13 @@ export const Transaction = {
 
 // Settings endpoints
 export const Settings = {
-  list: () => apiClient.request('/settings'),
-  get: (id) => apiClient.request(`/settings/${id}`),
-  create: (data) => apiClient.request('/settings', { 
-    method: 'POST', 
-    body: JSON.stringify(data) 
-  }),
-  update: (id, data) => apiClient.request(`/settings/${id}`, { 
+  getByGroup: (groupId) => apiClient.request(`/settings/${groupId}`),
+  updateByGroup: (groupId, data) => apiClient.request(`/settings/${groupId}`, { 
     method: 'PUT', 
     body: JSON.stringify(data) 
   }),
-  delete: (id) => apiClient.request(`/settings/${id}`, { 
-    method: 'DELETE' 
+  createByGroup: (groupId, data) => apiClient.request(`/settings/${groupId}`, { 
+    method: 'POST', 
+    body: JSON.stringify(data) 
   }),
 };

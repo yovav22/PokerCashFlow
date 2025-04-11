@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Save, Check, Share2 } from "lucide-react";
+import { getCurrentGroup } from "@/utils/groupStorage";
 import { 
   Alert,
   AlertDescription
@@ -42,11 +43,15 @@ export default function SettingsPage() {
 
   const loadSettings = async () => {
     try {
-      const settingsList = await Settings.list();
-      if (settingsList.length > 0) {
-        setSettings(settingsList[0]);
+      const currentGroup = getCurrentGroup(); 
+      const settingsList = await Settings.getByGroup(currentGroup.id);
+      if (settingsList) {
+        setSettings(settingsList);
+      } else {
+        await Settings.createByGroup(currentGroup.id, settings);
       }
     } catch (err) {
+      console.error('Error loading settings:', err.message);
       setError("Failed to load settings");
     }
   };
@@ -61,17 +66,14 @@ export default function SettingsPage() {
     setIsSaved(false);
     
     try {
-      if (settings.id) {
-        await Settings.update(settings.id, settings);
-      } else {
-        await Settings.create(settings);
-      }
+      const currentGroup = getCurrentGroup(); 
+      await Settings.updateByGroup(currentGroup.id, settings);
       setIsSaved(true);
-      toast({
-        title: "Settings saved",
-        description: "Your game settings have been saved successfully",
-        variant: "success"
-      });
+      // toast({
+      //   title: "Settings saved",
+      //   description: "Your game settings have been saved successfully",
+      //   variant: "success"
+      // });
     } catch (err) {
       setError("Failed to save settings");
       toast({
