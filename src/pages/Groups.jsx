@@ -1,113 +1,28 @@
 import React, { useState, useEffect } from "react";
-import { Group } from "@/api/entities";
-import { Session } from "@/api/entities";
-import { Player } from "@/api/entities";
-import { Transaction } from "@/api/entities";
+import { Group, Player, Session, Transaction } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  Legend,
-  Cell
-} from "recharts";
-import {
-  Wallet,
-  Plus,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  CreditCard,
-  PiggyBank,
-  Calendar,
-  Award,
-  Trash2,
-  Edit,
-  List,
-  Users,
-  FileText,
-  Loader2,
-  ChevronRight,
-  ArrowUpRight,
-  ArrowDownRight,
-  Eye,
-  UserIcon,
-  Gamepad2,
-  AlertCircle,
-  Trophy,
-  Target,
-  Star,
-  Heart,
-  Gamepad,
-} from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PiggyBank, Plus, Trash2, Edit, Users, Gamepad2, BellRing, BellOff, Wallet, Trophy, Target, Star, Heart, Gamepad, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { BellRing, BellOff } from "lucide-react";
 
 export default function Groups() {
   const [groups, setGroups] = useState([]);
   const [players, setPlayers] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newAccountDialog, setNewAccountDialog] = useState(false);
-  const [newTransactionDialog, setNewTransactionDialog] = useState(false);
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState(false);
   const [editAccountDialog, setEditAccountDialog] = useState(false);
   const [error, setError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [currentUser, setCurrentUser] = useState(null);
   const [selectedAccountId, setSelectedAccountId] = useState(null);
-  const [activeTab, setActiveTab] = useState("groups"); // Define activeTab state
-  const [contactDialogOpen, setContactDialogOpen] = useState(false); // Define contactDialogOpen state
-
-  // Form states
   const [newAccount, setNewAccount] = useState({
     name: "",
     description: "",
@@ -120,6 +35,7 @@ export default function Groups() {
     total_deposits: 0,
     total_withdrawals: 0
   });
+  const [editAccount, setEditAccount] = useState(null);
 
   const groupIcons = {
     piggyBank: { icon: PiggyBank, color: "bg-pink-100 text-pink-600" },
@@ -132,54 +48,28 @@ export default function Groups() {
     gamepad: { icon: Gamepad, color: "bg-green-100 text-green-600" }
   };
 
-  const [editAccount, setEditAccount] = useState(null);
-
   useEffect(() => {
-    loadData();
-  }, [retryCount]);
+    loadGroups();
+  }, []);
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
+  const loadGroups = async () => {
     try {
-      const [groups, players, sessions, transactions] = await Promise.all([
-        Group.list(),
-        Player.list(),
-        Session.list(),
-        Transaction.list()
-      ]);
-
-      setGroups(groups);
-      setPlayers(players);
-      setSessions(sessions);
-      setTransactions(transactions);
-      
+      setLoading(true);
+      const fetchedGroups = await Group.list();
+      setGroups(fetchedGroups);
       setLoading(false);
     } catch (error) {
-      console.error("Error loading data:", error);
-      setError("Failed to load data. Please try again.");
+      console.error("Error loading groups:", error);
+      setError("Failed to load groups. Please try again.");
       setLoading(false);
     }
   };
 
   const handleCreateAccount = async () => {
     try {
-
       const createdGroup = await Group.create(newAccount);
-      setGroups([...groups, createdGroup]);
-      setNewAccount({
-        name: "",
-        description: "",
-        icon: "piggyBank",
-        owner: "",
-        players: [],
-        games: [],
-        notifications_enabled: true,
-        total_balance: 0,
-        total_deposits: 0,
-        total_withdrawals: 0
-      });
       setNewAccountDialog(false);
+      loadGroups();
     } catch (error) {
       console.error("Error creating account:", error);
       setError("Failed to create account. Please try again.");
@@ -203,19 +93,7 @@ export default function Groups() {
   const handleDeleteAccount = async () => {
     try {
       if (!selectedAccountId) return;
-      
-      // First, delete all transactions for this account
-      const accountTransactions = await Transaction.filter({
-        group_id: selectedAccountId
-      });
-      
-      for (const transaction of accountTransactions) {
-        await Transaction.delete(transaction.id);
-      }
-      
-      // Then delete the account
       await Group.delete(selectedAccountId);
-      
       const updatedGroups = groups.filter(group => group.id !== selectedAccountId);
       setGroups(updatedGroups);
       setSelectedAccountId(null);
@@ -245,7 +123,6 @@ export default function Groups() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Groups</h1>
@@ -275,7 +152,6 @@ export default function Groups() {
         </div>
       )}
 
-      {/* Groups table */}
       {groups.length === 0 ? (
         <Card className="border-dashed border-2 border-gray-300">
           <CardContent className="py-12">
@@ -430,7 +306,6 @@ export default function Groups() {
         </Card>
       )}
 
-      {/* Create Group Dialog */}
       <Dialog open={newAccountDialog} onOpenChange={setNewAccountDialog}>
         <DialogContent>
           <DialogHeader>
@@ -541,7 +416,6 @@ export default function Groups() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Group Dialog */}
       <Dialog open={editAccountDialog} onOpenChange={setEditAccountDialog}>
         <DialogContent>
           <DialogHeader>
@@ -652,7 +526,6 @@ export default function Groups() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Group Confirmation */}
       <AlertDialog open={deleteConfirmDialog} onOpenChange={setDeleteConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
