@@ -204,7 +204,12 @@ export default function Players() {
     setPerformanceHistory(performanceData);
   };
 
-  // Sort the data up front for each chart
+  // Filter players based on search query
+  const filteredPlayers = players.filter((player) =>
+    player.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ).sort((a, b) => a.id - b.id);
+
+  // Sort the data for each chart
   const earningsSorted = [...performanceHistory].sort(
     (a, b) => b.earnings - a.earnings
   );
@@ -308,10 +313,6 @@ export default function Players() {
     setEditingPlayer(null);
     loadPlayers();
   };
-
-  const filteredPlayers = players.filter((player) =>
-    player.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => a.id - b.id);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -434,17 +435,23 @@ export default function Players() {
                         if (!active || !payload || !payload.length) return null;
                         
                         // Find all session results for this date
-                        const sessionDate = format(new Date(parseInt(label)), "MMM d, yyyy");
+                        const hoverDate = new Date(parseInt(label));
                         const sessionResults = players.map(player => {
                           const playerTx = transactions.filter(
-                            tx => tx.player_id === player.id && tx.group_id === getCurrentGroup().id
+                            tx => tx.player_id === player.id && 
+                                 tx.group_id === getCurrentGroup().id
                           );
                           
                           const session = sessions.find(
-                            s => s.status === "completed" && 
-                                s.group_id === getCurrentGroup().id &&
-                                s.players.includes(player.id) && 
-                                s.date === sessionDate
+                            s => {
+                              const sDate = new Date(s.date);
+                              return s.status === "completed" && 
+                                    s.group_id === getCurrentGroup().id &&
+                                    s.players.includes(player.id) && 
+                                    sDate.getFullYear() === hoverDate.getFullYear() &&
+                                    sDate.getMonth() === hoverDate.getMonth() &&
+                                    sDate.getDate() === hoverDate.getDate();
+                            }
                           );
 
                           if (!session) return null;
@@ -456,11 +463,11 @@ export default function Players() {
                           const buyIns = sessionTx
                             .filter(tx => tx.is_buy_in)
                             .reduce((sum, tx) => sum + tx.amount, 0);
-                            
+                             
                           const cashOuts = sessionTx
                             .filter(tx => !tx.is_buy_in)
                             .reduce((sum, tx) => sum + tx.amount, 0);
-
+                            
                           const sessionNet = cashOuts - buyIns;
 
                           return {
@@ -471,10 +478,10 @@ export default function Players() {
                         })
                         .filter(Boolean)
                         .sort((a, b) => b.value - a.value); // Sort by earnings descending
-
+                        
                         return (
                           <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                            <p className="font-semibold mb-2">{label ? format(new Date(parseInt(label)), "MMM d, yyyy") : "No date"}</p>
+                            <p className="font-semibold mb-2">{format(hoverDate, "MMM d, yyyy")}</p>
                             {sessionResults.map((entry, index) => (
                               <div key={index} className="flex items-center gap-2 text-sm">
                                 <div
@@ -524,6 +531,485 @@ export default function Players() {
                         return {
                           date: sessionDate.getTime(),
                           [player.name]: cashOuts - buyIns
+                        };
+                      });
+
+                      return dataPoints.length > 0 ? (
+                        <Line
+                          key={player.id}
+                          type="monotone"
+                          data={dataPoints}
+                          dataKey={player.name}
+                          name={player.name}
+                          stroke={`hsl(${(index * 360) / players.length}, 70%, 50%)`}
+                          strokeWidth={2}
+                          dot={{
+                            r: 4,
+                            fill: `hsl(${(index * 360) / players.length}, 70%, 50%)`
+                          }}
+                        />
+                      ) : null;
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Accumulative Earnings Progression Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Accumulative Earnings Progression</CardTitle>
+              <CardDescription>Total accumulated earnings over time per player</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart margin={{ top: 20, right: 30, left: 60, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      type="number"
+                      domain={['dataMin', 'dataMax']}
+                      tickFormatter={(value) => format(new Date(value), "MMM d")}
+                      label={{ value: "Session Date", position: "insideBottom", offset: -5 }}
+                      tick={{ fontSize: 12 }}
+                      scale="time"
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `₪${value}`}
+                      label={{ value: "Total Accumulated Earnings", angle: -90, position: "insideLeft", offset: -50, dy: 50 }}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        
+                        const hoverDate = new Date(parseInt(label));
+                        
+                        // Find accumulated earnings for all players at this date point
+                        const accumulatedResults = players.map(player => {
+                          // Get all completed sessions for this player up to this date
+                          const playerSessions = sessions
+                            .filter(s => 
+                              s.status === "completed" &&
+                              s.group_id === getCurrentGroup().id &&
+                              s.players.includes(player.id) &&
+                              new Date(s.date) <= hoverDate
+                            )
+                            .sort((a, b) => new Date(a.date) - new Date(b.date));
+                          
+                          if (playerSessions.length === 0) return null;
+                          
+                          // Calculate accumulated earnings up to this date
+                          let accumulated = 0;
+                          playerSessions.forEach(session => {
+                            const sessionTx = transactions.filter(tx => 
+                              tx.player_id === player.id &&
+                              tx.session_id === session.id &&
+                              tx.group_id === getCurrentGroup().id
+                            );
+                            
+                            const buyIns = sessionTx
+                              .filter(tx => tx.is_buy_in)
+                              .reduce((sum, tx) => sum + tx.amount, 0);
+                              
+                            const cashOuts = sessionTx
+                              .filter(tx => !tx.is_buy_in)
+                              .reduce((sum, tx) => sum + tx.amount, 0);
+                            
+                            accumulated += (cashOuts - buyIns);
+                          });
+                          
+                          return {
+                            name: player.name,
+                            value: accumulated,
+                            color: `hsl(${(players.indexOf(player) * 360) / players.length}, 70%, 50%)`
+                          };
+                        }).filter(result => result !== null);
+                        
+                        // Sort by earnings (highest to lowest)
+                        accumulatedResults.sort((a, b) => b.value - a.value);
+                        
+                        return (
+                          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                            <p className="font-semibold mb-2">{format(hoverDate, "MMM d, yyyy")}</p>
+                            {accumulatedResults.map((entry, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: entry.color }}
+                                />
+                                <span>{entry.name}:</span>
+                                <span className={`font-semibold ${entry.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ₪{Math.round(entry.value).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }}
+                    />
+                    {players.map((player, index) => {
+                      // Get all completed sessions for this player in chronological order
+                      const playerSessions = sessions
+                        .filter(s => 
+                          s.status === "completed" &&
+                          s.group_id === getCurrentGroup().id &&
+                          s.players.includes(player.id)
+                        )
+                        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                      let accumulatedEarnings = 0;
+                      // Calculate accumulative earnings for each session
+                      const dataPoints = playerSessions.map(session => {
+                        const sessionTx = transactions.filter(tx => 
+                          tx.player_id === player.id &&
+                          tx.session_id === session.id &&
+                          tx.group_id === getCurrentGroup().id
+                        );
+
+                        const buyIns = sessionTx
+                          .filter(tx => tx.is_buy_in)
+                          .reduce((sum, tx) => sum + tx.amount, 0);
+                          
+                        const cashOuts = sessionTx
+                          .filter(tx => !tx.is_buy_in)
+                          .reduce((sum, tx) => sum + tx.amount, 0);
+
+                        const sessionNet = cashOuts - buyIns;
+                        accumulatedEarnings += sessionNet;
+
+                        const sessionDate = new Date(session.date);
+                        sessionDate.setHours(12, 0, 0, 0);
+
+                        return {
+                          date: sessionDate.getTime(),
+                          [player.name]: accumulatedEarnings
+                        };
+                      });
+
+                      return dataPoints.length > 0 ? (
+                        <Line
+                          key={player.id}
+                          type="monotone"
+                          data={dataPoints}
+                          dataKey={player.name}
+                          name={player.name}
+                          stroke={`hsl(${(index * 360) / players.length}, 70%, 50%)`}
+                          strokeWidth={2}
+                          dot={{
+                            r: 4,
+                            fill: `hsl(${(index * 360) / players.length}, 70%, 50%)`
+                          }}
+                        />
+                      ) : null;
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Average Money per Game Progression Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Average Money per Game Progression</CardTitle>
+              <CardDescription>How average earnings per game evolved over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart margin={{ top: 20, right: 30, left: 60, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      type="number"
+                      domain={['dataMin', 'dataMax']}
+                      tickFormatter={(value) => format(new Date(value), "MMM d")}
+                      label={{ value: "Session Date", position: "insideBottom", offset: -5 }}
+                      tick={{ fontSize: 12 }}
+                      scale="time"
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `₪${value}`}
+                      label={{ value: "Average per Game", angle: -90, position: "insideLeft", offset: -50, dy: 50 }}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        
+                        const hoverDate = new Date(parseInt(label));
+                        
+                        // Find average per game for all players at this date point
+                        const averageResults = players.map(player => {
+                          // Get all completed sessions for this player up to this date
+                          const playerSessions = sessions
+                            .filter(s => 
+                              s.status === "completed" &&
+                              s.group_id === getCurrentGroup().id &&
+                              s.players.includes(player.id) &&
+                              new Date(s.date) <= hoverDate
+                            )
+                            .sort((a, b) => new Date(a.date) - new Date(b.date));
+                          
+                          if (playerSessions.length === 0) return null;
+                          
+                          // Calculate total earnings up to this date
+                          let totalEarnings = 0;
+                          playerSessions.forEach(session => {
+                            const sessionTx = transactions.filter(tx => 
+                              tx.player_id === player.id &&
+                              tx.session_id === session.id &&
+                              tx.group_id === getCurrentGroup().id
+                            );
+                            
+                            const buyIns = sessionTx
+                              .filter(tx => tx.is_buy_in)
+                              .reduce((sum, tx) => sum + tx.amount, 0);
+                              
+                            const cashOuts = sessionTx
+                              .filter(tx => !tx.is_buy_in)
+                              .reduce((sum, tx) => sum + tx.amount, 0);
+                            
+                            totalEarnings += (cashOuts - buyIns);
+                          });
+                          
+                          // Calculate average earnings per game
+                          const avgPerGame = totalEarnings / playerSessions.length;
+                          
+                          return {
+                            name: player.name,
+                            value: avgPerGame,
+                            color: `hsl(${(players.indexOf(player) * 360) / players.length}, 70%, 50%)`
+                          };
+                        }).filter(result => result !== null);
+                        
+                        // Sort by earnings (highest to lowest)
+                        averageResults.sort((a, b) => b.value - a.value);
+                        
+                        return (
+                          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                            <p className="font-semibold mb-2">{format(hoverDate, "MMM d, yyyy")}</p>
+                            {averageResults.map((entry, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: entry.color }}
+                                />
+                                <span>{entry.name}:</span>
+                                <span className={`font-semibold ${entry.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ₪{Math.round(entry.value).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }}
+                    />
+                    {players.map((player, index) => {
+                      // Get all completed sessions for this player in chronological order
+                      const playerSessions = sessions
+                        .filter(s => 
+                          s.status === "completed" &&
+                          s.group_id === getCurrentGroup().id &&
+                          s.players.includes(player.id)
+                        )
+                        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                      let totalEarnings = 0;
+                      let gamesPlayed = 0;
+                      
+                      // Calculate average earnings per game for each session point
+                      const dataPoints = playerSessions.map(session => {
+                        const sessionTx = transactions.filter(tx => 
+                          tx.player_id === player.id &&
+                          tx.session_id === session.id &&
+                          tx.group_id === getCurrentGroup().id
+                        );
+
+                        const buyIns = sessionTx
+                          .filter(tx => tx.is_buy_in)
+                          .reduce((sum, tx) => sum + tx.amount, 0);
+                          
+                        const cashOuts = sessionTx
+                          .filter(tx => !tx.is_buy_in)
+                          .reduce((sum, tx) => sum + tx.amount, 0);
+
+                        const sessionNet = cashOuts - buyIns;
+                        totalEarnings += sessionNet;
+                        gamesPlayed++;
+
+                        const sessionDate = new Date(session.date);
+                        sessionDate.setHours(12, 0, 0, 0);
+
+                        return {
+                          date: sessionDate.getTime(),
+                          [player.name]: totalEarnings / gamesPlayed
+                        };
+                      });
+
+                      return dataPoints.length > 0 ? (
+                        <Line
+                          key={player.id}
+                          type="monotone"
+                          data={dataPoints}
+                          dataKey={player.name}
+                          name={player.name}
+                          stroke={`hsl(${(index * 360) / players.length}, 70%, 50%)`}
+                          strokeWidth={2}
+                          dot={{
+                            r: 4,
+                            fill: `hsl(${(index * 360) / players.length}, 70%, 50%)`
+                          }}
+                        />
+                      ) : null;
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Win Rate Percentage Progression Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Win Rate Percentage Progression</CardTitle>
+              <CardDescription>How win rate evolved over time per player</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart margin={{ top: 20, right: 30, left: 60, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      type="number"
+                      domain={['dataMin', 'dataMax']}
+                      tickFormatter={(value) => format(new Date(value), "MMM d")}
+                      label={{ value: "Session Date", position: "insideBottom", offset: -5 }}
+                      tick={{ fontSize: 12 }}
+                      scale="time"
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `${value}%`}
+                      label={{ value: "Win Rate Percentage", angle: -90, position: "insideLeft", offset: -50, dy: 50 }}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        
+                        const hoverDate = new Date(parseInt(label));
+                        
+                        // Find win rate for all players at this date point
+                        const winRateResults = players.map(player => {
+                          // Get all completed sessions for this player up to this date
+                          const playerSessions = sessions
+                            .filter(s => 
+                              s.status === "completed" &&
+                              s.group_id === getCurrentGroup().id &&
+                              s.players.includes(player.id) &&
+                              new Date(s.date) <= hoverDate
+                            )
+                            .sort((a, b) => new Date(a.date) - new Date(b.date));
+                          
+                          if (playerSessions.length === 0) return null;
+                          
+                          // Calculate total buyins and earnings up to this date
+                          let totalBuyIns = 0;
+                          let totalEarnings = 0;
+                          
+                          playerSessions.forEach(session => {
+                            const sessionTx = transactions.filter(tx => 
+                              tx.player_id === player.id &&
+                              tx.session_id === session.id &&
+                              tx.group_id === getCurrentGroup().id
+                            );
+                            
+                            const buyIns = sessionTx
+                              .filter(tx => tx.is_buy_in)
+                              .reduce((sum, tx) => sum + tx.amount, 0);
+                              
+                            const cashOuts = sessionTx
+                              .filter(tx => !tx.is_buy_in)
+                              .reduce((sum, tx) => sum + tx.amount, 0);
+                            
+                            totalBuyIns += buyIns;
+                            totalEarnings += (cashOuts - buyIns);
+                          });
+                          
+                          // Calculate win rate percentage
+                          const winRate = totalBuyIns > 0 ? (totalEarnings / totalBuyIns) * 100 : 0;
+                          
+                          return {
+                            name: player.name,
+                            value: winRate,
+                            color: `hsl(${(players.indexOf(player) * 360) / players.length}, 70%, 50%)`
+                          };
+                        }).filter(result => result !== null);
+                        
+                        // Sort by win rate (highest to lowest)
+                        winRateResults.sort((a, b) => b.value - a.value);
+                        
+                        return (
+                          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                            <p className="font-semibold mb-2">{format(hoverDate, "MMM d, yyyy")}</p>
+                            {winRateResults.map((entry, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: entry.color }}
+                                />
+                                <span>{entry.name}:</span>
+                                <span className={`font-semibold ${entry.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {entry.value.toFixed(1)}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }}
+                    />
+                    {players.map((player, index) => {
+                      // Get all completed sessions for this player in chronological order
+                      const playerSessions = sessions
+                        .filter(s => 
+                          s.status === "completed" &&
+                          s.group_id === getCurrentGroup().id &&
+                          s.players.includes(player.id)
+                        )
+                        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                      let totalBuyIns = 0;
+                      let totalEarnings = 0;
+                      
+                      // Calculate win rate for each session point
+                      const dataPoints = playerSessions.map(session => {
+                        const sessionTx = transactions.filter(tx => 
+                          tx.player_id === player.id &&
+                          tx.session_id === session.id &&
+                          tx.group_id === getCurrentGroup().id
+                        );
+
+                        const buyIns = sessionTx
+                          .filter(tx => tx.is_buy_in)
+                          .reduce((sum, tx) => sum + tx.amount, 0);
+                          
+                        const cashOuts = sessionTx
+                          .filter(tx => !tx.is_buy_in)
+                          .reduce((sum, tx) => sum + tx.amount, 0);
+
+                        const sessionNet = cashOuts - buyIns;
+                        totalBuyIns += buyIns;
+                        totalEarnings += sessionNet;
+
+                        const winRate = totalBuyIns > 0 ? (totalEarnings / totalBuyIns) * 100 : 0;
+
+                        const sessionDate = new Date(session.date);
+                        sessionDate.setHours(12, 0, 0, 0);
+
+                        return {
+                          date: sessionDate.getTime(),
+                          [player.name]: winRate
                         };
                       });
 
