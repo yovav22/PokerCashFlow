@@ -76,9 +76,9 @@ export default function Layout({ children, currentPageName }) {
       theme_color: "#ef4444",
       background_color: "#ffffff",
       display: "standalone",
-      scope: "/",
-      start_url: "/",
-      id: "/",
+      scope: "/PokerCashFlow/",
+      start_url: "/PokerCashFlow/",
+      id: "/PokerCashFlow/",
       description: "Poker game management and tracking",
       orientation: "any"
     };
