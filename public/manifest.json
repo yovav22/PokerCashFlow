@@ -9,7 +9,7 @@
   "theme_color": "#ef4444",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/PokerCashFlow/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
