@@ -70,19 +70,7 @@ export default function Layout({ children, currentPageName }) {
       meta.content = tag.content;
     });
     
-    const manifestContent = {
-      name: "Poker Cashflow",
-      short_name: "Poker Cashflow",
-      theme_color: "#ef4444",
-      background_color: "#ffffff",
-      display: "standalone",
-      scope: "/PokerCashFlow/",
-      start_url: "/PokerCashFlow/",
-      id: "/PokerCashFlow/",
-      description: "Poker game management and tracking",
-      orientation: "any"
-    };
-    
+    // Set theme color for PWA
     let themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (!themeColorMeta) {
       themeColorMeta = document.createElement('meta');
@@ -90,20 +78,9 @@ export default function Layout({ children, currentPageName }) {
       document.head.appendChild(themeColorMeta);
     }
     themeColorMeta.content = "#ef4444";
-    
-    let manifestMeta = document.querySelector('link[rel="manifest"]');
-    if (!manifestMeta) {
-      manifestMeta = document.createElement('link');
-      manifestMeta.rel = "manifest";
-      document.head.appendChild(manifestMeta);
-    }
-    
-    const manifestBlob = new Blob([JSON.stringify(manifestContent)], {type: 'application/json'});
-    const manifestURL = URL.createObjectURL(manifestBlob);
-    manifestMeta.href = manifestURL;
 
     return () => {
-      URL.revokeObjectURL(manifestURL);
+      // Clean up code if needed
     };
   }, []);
 
