@@ -79,6 +79,33 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     const group = getCurrentGroup();
+    
+    // Check if group exists before proceeding
+    if (!group) {
+      console.warn("No group selected or group not found");
+      // Set empty states
+      setStatistics({
+        totalGames: 0,
+        totalPlayers: 0,
+        totalMoneyPlayed: 0,
+        averageBuyIn: 0,
+        totalProfitLoss: 0,
+        highestSession: { amount: 0, player: null, date: null },
+        topEarner: null,
+        biggestLoser: null,
+        mostActive: null,
+        playerRetentionRate: 0,
+      });
+      setTopPlayers([]);
+      setRecentTransactions([]);
+      setLastSession(null);
+      setLastSessionTransactions([]);
+      setGroupPlayers([]);
+      setGroupTransactions([]);
+      setCompletedSessions([]);
+      return;
+    }
+
     const players = await Player.list();
     setAllPlayers(players);
 
@@ -91,7 +118,7 @@ export default function Dashboard() {
     const completedSessions = groupSessions.filter((s) => s.status === "completed");
 
     // Get all players in this group
-    const groupPlayers = players.filter(p => group.players.includes(p.id));
+    const groupPlayers = players.filter(p => group.players && group.players.includes(p.id));
     
     // Calculate stats only for players who have played in this group
     const activePlayers = groupPlayers.filter(p => {
