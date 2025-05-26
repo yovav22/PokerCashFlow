@@ -39,7 +39,7 @@ jobs:
       - name: Build React App
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL_PROD }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL_PROD }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
