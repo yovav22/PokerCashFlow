@@ -151,8 +151,8 @@ export default function Sessions() {
 
       if (registeredPlayers.includes(playerId)) return;
 
-      if (registeredPlayers.length >= settings.max_players) {
-        alert(`Maximum number of players (${settings.max_players}) reached for this session.`);
+      if (registeredPlayers.length >= 2 * settings.max_players) {
+        alert(`Maximum number of players (${2* settings.max_players}) reached for this session.`);
         return;
       }
       
@@ -605,11 +605,11 @@ export default function Sessions() {
                       onValueChange={(value) => {
                         registerForSession(session.id, value);
                       }}
-                      disabled={(session.players?.length || 0) >= settings.max_players}
+                      disabled={(session.players?.length || 0) >= 2 * settings.max_players}
                     >
                       <SelectTrigger id={`register-player-${session.id}`}>
                         <SelectValue placeholder={
-                          (session.players?.length || 0) >= settings.max_players 
+                          (session.players?.length || 0) >= 2 * settings.max_players 
                             ? "Maximum players reached" 
                             : "Select player to register"
                         } />

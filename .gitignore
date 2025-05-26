@@ -1,1 +1,17 @@
-node_modules
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Other common ignores
+node_modules/
+dist/
+
+# Logs
+*.log
+
+# Build outputs for React (if you build production)
+build
+
+# If using macOS
+.DS_Store
