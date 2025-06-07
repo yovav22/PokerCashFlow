@@ -1,18 +1,97 @@
 {
-  "name": "Poker Cashflow",
-  "short_name": "Poker Cashflow",
-  "description": "Track and manage poker game sessions and player statistics",
+  "name": "Poker Cash Flow - Session Tracker",
+  "short_name": "PokerFlow",
+  "description": "Track poker sessions, manage players, and analyze performance. Works offline!",
   "start_url": "/PokerCashFlow/",
   "scope": "/PokerCashFlow/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#ef4444",
+  "lang": "en",
+  "categories": ["games", "finance", "productivity"],
+  "screenshots": [
+    {
+      "src": "/PokerCashFlow/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard view showing poker statistics"
+    },
+    {
+      "src": "/PokerCashFlow/screenshot-narrow.png", 
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile view of player leaderboard"
+    }
+  ],
   "icons": [
+    {
+      "src": "/PokerCashFlow/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/PokerCashFlow/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/PokerCashFlow/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/PokerCashFlow/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/PokerCashFlow/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/PokerCashFlow/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/PokerCashFlow/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/PokerCashFlow/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/PokerCashFlow/icon-192x192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/PokerCashFlow/icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "/PokerCashFlow/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 } 

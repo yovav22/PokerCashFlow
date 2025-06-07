@@ -2,10 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    
+    <!-- Mobile & PWA Meta Tags -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PokerFlow" />
+    <meta name="theme-color" content="#ef4444" />
+    <meta name="msapplication-TileColor" content="#ef4444" />
+    <meta name="msapplication-navbutton-color" content="#ef4444" />
+    
+    <!-- SEO & Description -->
+    <meta name="description" content="Track poker sessions, manage players, and analyze performance. Works offline!" />
+    <meta name="keywords" content="poker, cash game, session tracker, statistics, PWA" />
+    <meta name="author" content="Poker Cash Flow" />
+    
+    <!-- Icons & Manifest -->
     <link rel="icon" type="image/svg+xml" href="/PokerCashFlow/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/PokerCashFlow/manifest.json" />
-    <title>Poker Cashflow</title>
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/PokerCashFlow/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/PokerCashFlow/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/PokerCashFlow/icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/PokerCashFlow/icon-128x128.png" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/src/main.jsx" as="script" />
+    <link rel="dns-prefetch" href="https://pokercashflowserver.onrender.com" />
+    
+    <title>Poker Cash Flow - Session Tracker</title>
   </head>
   <body>
     <div id="root"></div>

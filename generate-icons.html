@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Icon Generator</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #ef4444;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #ef4444;
+        }
+        .preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .icon-preview {
+            text-align: center;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        .icon-preview canvas {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .download-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .download-btn:hover {
+            background: #dc2626;
+        }
+        .instructions {
+            background: #eff6ff;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 PWA Icon Generator</h1>
+        
+        <div class="upload-area" onclick="document.getElementById('svgFile').click()">
+            <div>📁 Click to upload your favicon.svg file</div>
+            <div style="margin-top: 10px; font-size: 14px; color: #666;">
+                Or drag and drop your SVG file here
+            </div>
+            <input type="file" id="svgFile" accept=".svg" class="hidden">
+        </div>
+
+        <div id="preview" class="preview hidden"></div>
+
+        <div class="instructions">
+            <h3>📋 Instructions:</h3>
+            <ol>
+                <li>Upload your <code>favicon.svg</code> file using the area above</li>
+                <li>Preview and download all generated icon sizes</li>
+                <li>Place the downloaded PNG files in your <code>public/</code> directory</li>
+                <li>Build and deploy your PWA!</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const iconSizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const maskableSizes = [192, 512];
+
+        const fileInput = document.getElementById('svgFile');
+        const preview = document.getElementById('preview');
+
+        fileInput.addEventListener('change', handleFile);
+
+        // Drag and drop
+        document.querySelector('.upload-area').addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.querySelector('.upload-area').addEventListener('drop', (e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile({ target: { files } });
+            }
+        });
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file || !file.type.includes('svg')) {
+                alert('Please select an SVG file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                generateIcons(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+
+        function generateIcons(svgContent) {
+            preview.innerHTML = '';
+            preview.classList.remove('hidden');
+
+            // Generate regular icons
+            iconSizes.forEach(size => {
+                createIcon(svgContent, size, `icon-${size}x${size}.png`, false);
+            });
+
+            // Generate maskable icons
+            maskableSizes.forEach(size => {
+                createIcon(svgContent, size, `icon-${size}x${size}-maskable.png`, true);
+            });
+        }
+
+        function createIcon(svgContent, size, filename, isMaskable) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = size;
+            canvas.height = size;
+
+            // Create SVG image
+            const img = new Image();
+            const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = () => {
+                if (isMaskable) {
+                    // Add background for maskable icons
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(0, 0, size, size);
+                    
+                    // Draw icon smaller (60% of canvas size for safe area)
+                    const iconSize = size * 0.6;
+                    const padding = (size - iconSize) / 2;
+                    ctx.drawImage(img, padding, padding, iconSize, iconSize);
+                } else {
+                    // Draw icon full size for regular icons
+                    ctx.drawImage(img, 0, 0, size, size);
+                }
+
+                // Create preview
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'icon-preview';
+                
+                const previewCanvas = canvas.cloneNode();
+                const previewCtx = previewCanvas.getContext('2d');
+                previewCanvas.width = 64;
+                previewCanvas.height = 64;
+                previewCtx.drawImage(canvas, 0, 0, 64, 64);
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'download-btn';
+                downloadBtn.textContent = `Download ${filename}`;
+                downloadBtn.onclick = () => downloadIcon(canvas, filename);
+
+                previewDiv.appendChild(previewCanvas);
+                previewDiv.appendChild(document.createElement('br'));
+                previewDiv.appendChild(document.createTextNode(`${size}x${size}${isMaskable ? ' (maskable)' : ''}`));
+                previewDiv.appendChild(document.createElement('br'));
+                previewDiv.appendChild(downloadBtn);
+
+                preview.appendChild(previewDiv);
+                URL.revokeObjectURL(url);
+            };
+
+            img.src = url;
+        }
+
+        function downloadIcon(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html> 
