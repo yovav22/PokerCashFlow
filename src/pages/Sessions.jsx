@@ -543,17 +543,17 @@ export default function Sessions() {
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem 
+                          onClick={() => handleOpenSummary(session)}
+                        >
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          All Transactions
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
                           className="text-red-600"
                           onClick={() => setSessionToDelete(session)}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete Session
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleOpenSummary(session)}
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          All Transactions
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

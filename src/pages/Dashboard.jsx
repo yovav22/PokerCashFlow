@@ -34,6 +34,7 @@ import {
   Trophy,
   Crown,
   Share,
+  Star,
 } from "lucide-react";
 import LastSessionStats from "../components/dashboard/LastSessionStats";
 import { getCurrentGroup } from "@/utils/groupStorage";
@@ -57,7 +58,7 @@ export default function Dashboard() {
     totalProfitLoss: 0,
     highestSession: { amount: 0, player: null, date: null },
     topEarner: null,
-    biggestLoser: null,
+    topWinRate: null,
     mostActive: null,
     playerRetentionRate: 0,
   });
@@ -92,7 +93,7 @@ export default function Dashboard() {
         totalProfitLoss: 0,
         highestSession: { amount: 0, player: null, date: null },
         topEarner: null,
-        biggestLoser: null,
+        topWinRate: null,
         mostActive: null,
         playerRetentionRate: 0,
       });
@@ -220,6 +221,15 @@ export default function Dashboard() {
       { amount: 0, player: null, date: null }
     );
 
+    // Calculate top win rate player (only players with meaningful data)
+    const playersWithWinRate = playersWithStats
+      .filter(p => p.sessions_played >= 2 && p.total_buyin >= 100) // At least 2 sessions and ₪100 buy-in
+      .map(p => ({
+        ...p,
+        winRate: p.total_buyin > 0 ? (p.total_earnings / p.total_buyin) * 100 : 0
+      }))
+      .sort((a, b) => b.winRate - a.winRate);
+
     // Reset statistics with group-specific data
     setStatistics({
       totalGames: completedSessions.length,
@@ -228,7 +238,7 @@ export default function Dashboard() {
       averageBuyIn: activePlayers.length > 0 ? totalMoneyPlayed / activePlayers.length : 0,
       highestSession,
       topEarner: sortedPlayers[0] || null,
-      biggestLoser: [...sortedPlayers].sort((a, b) => a.total_earnings - b.total_earnings)[0] || null,
+      topWinRate: playersWithWinRate[0] || null,
       mostActive: [...playersWithStats].sort((a, b) => b.sessions_played - a.sessions_played)[0] || null,
       playerRetentionRate
     });
@@ -547,39 +557,33 @@ export default function Dashboard() {
                 </Card>
               )}
 
-              {statistics.biggestLoser && (
-                <Card className="bg-red-50 border-red-200">
+              {statistics.topWinRate && (
+                <Card className="bg-blue-50 border-blue-200">
                   <CardHeader className="py-3">
-                    <CardTitle className="text-sm text-red-700 flex items-center gap-2">
-                      <TrendingDown className="w-4 h-4" />
-                      Biggest Loser
+                    <CardTitle className="text-sm text-blue-700 flex items-center gap-2">
+                      <Star className="w-4 h-4" />
+                      Top Win Rate
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="py-3">
-                    {statistics.biggestLoser.total_earnings < 0 ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Avatar>
-                            <AvatarFallback className="bg-red-100 text-red-800">
-                              {statistics.biggestLoser.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">
-                            {statistics.biggestLoser.name}
-                          </span>
-                        </div>
-                        <Badge variant="destructive" className="text-lg">
-                          ₪{statistics.biggestLoser.total_earnings}
-                        </Badge>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Avatar>
+                          <AvatarFallback className="bg-blue-100 text-blue-800">
+                            {statistics.topWinRate.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">
+                          {statistics.topWinRate.name}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="text-center text-gray-500">
-                        No negative earners
-                      </div>
-                    )}
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800 text-lg">
+                        {statistics.topWinRate.winRate.toFixed(1)}%
+                      </Badge>
+                    </div>
                   </CardContent>
                 </Card>
               )}
