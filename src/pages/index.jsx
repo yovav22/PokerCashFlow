@@ -56,13 +56,13 @@ function PagesContent() {
         <Layout currentPageName={currentPage}>
             <Routes>            
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/Dashboard" element={<Dashboard />} />
-                <Route path="/Players" element={<Players />} />
-                <Route path="/Sessions" element={<Sessions />} />
-                <Route path="/Description" element={<Description />} />
-                <Route path="/Settings" element={<SettingsPage />} />
-                <Route path="/Groups" element={<Groups />} />
-                <Route path="/DataCleanup" element={<DataCleanup />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/players" element={<Players />} />
+                <Route path="/sessions" element={<Sessions />} />
+                <Route path="/description" element={<Description />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/groups" element={<Groups />} />
+                <Route path="/datacleanup" element={<DataCleanup />} />
             </Routes>
         </Layout>
     );
