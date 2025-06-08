@@ -73,13 +73,18 @@ export default function Dashboard() {
   const [showLeaderboardShareDialog, setShowLeaderboardShareDialog] = useState(false);
   const [downloadedLeaderboardFileName, setDownloadedLeaderboardFileName] = useState("");
   const leaderboardRef = useRef(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
 
   const loadDashboardData = async () => {
+    console.log('loadDashboardData called');
+    setLoading(true);
+    console.log('Loading set to true');
     const group = getCurrentGroup();
+    console.log('Current group:', group);
     
     // Check if group exists before proceeding
     if (!group) {
@@ -291,6 +296,8 @@ export default function Dashboard() {
     setGroupPlayers(groupPlayers);
     setGroupTransactions(groupTransactions);
     setCompletedSessions(completedSessions);
+    console.log('Loading set to false');
+    setLoading(false);
   };
 
   const shareLastSession = async () => {
@@ -367,6 +374,17 @@ export default function Dashboard() {
     setShowLeaderboardShareDialog(false);
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[70vh]">
+        <div className="flex flex-col items-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-red-600 border-t-transparent mb-4" />
+          <p className="text-xl">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

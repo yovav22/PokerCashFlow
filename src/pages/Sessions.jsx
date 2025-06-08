@@ -43,7 +43,6 @@ import {
   Calendar, 
   Edit, 
   Crown,
-  Loader2 
 } from "lucide-react";
 import {
   Table,
@@ -434,6 +433,17 @@ export default function Sessions() {
     return Object.values(summary).sort((a, b) => b.totalProfit - a.totalProfit);
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[70vh]">
+        <div className="flex flex-col items-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-red-600 border-t-transparent mb-4" />
+          <p className="text-xl">Loading sessions data...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -470,14 +480,8 @@ export default function Sessions() {
         </Card>
       )}
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
-          <p className="ml-2 text-lg text-gray-600">Loading sessions...</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6">
-          {sessions.map((session) => (
+      <div className="grid grid-cols-1 gap-6">
+        {sessions.map((session) => (
             <Card key={session.id} className="overflow-hidden">
               <CardHeader>
                 <div className="flex justify-between items-start">
@@ -650,7 +654,6 @@ export default function Sessions() {
             </Card>
           ))}
         </div>
-      )}
 
       <AlertDialog open={!!sessionToDelete} onOpenChange={() => setSessionToDelete(null)}>
         <AlertDialogContent>

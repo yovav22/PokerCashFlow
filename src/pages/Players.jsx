@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,13 +38,9 @@ import {
   Star,
   Calendar,
   Award,
-  Mail,
-  Phone,
-  User,
   MoreVertical,
   Pencil,
   Trash2,
-  Copy
 } from "lucide-react";
 import {
   BarChart,
@@ -129,12 +124,14 @@ export default function Players() {
   const [activeTab, setActiveTab] = useState("statistics");
   const [transactions, setTransactions] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadPlayers();
   }, []);
 
   const loadPlayers = async () => {
+    setLoading(true);
     const group = getCurrentGroup();
     const playersIdsInGroup = group ? group.players : [];
 
@@ -202,6 +199,7 @@ export default function Players() {
       }));
 
     setPerformanceHistory(performanceData);
+    setLoading(false);
   };
 
   // Filter players based on search query
@@ -318,6 +316,17 @@ export default function Players() {
     navigator.clipboard.writeText(text);
     alert("Copied to clipboard!");
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[70vh]">
+        <div className="flex flex-col items-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-red-600 border-t-transparent mb-4" />
+          <p className="text-xl">Loading players data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
