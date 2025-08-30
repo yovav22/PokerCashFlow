@@ -14,7 +14,7 @@ import Groups from "./Groups";
 
 import DataCleanup from "./DataCleanup";
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
     
@@ -69,6 +69,7 @@ function PagesContent() {
 }
 
 export default function Pages() {
+    // HashRouter doesn't need basename - works the same everywhere!
     return (
         <Router>
             <PagesContent />

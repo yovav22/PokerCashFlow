@@ -208,6 +208,13 @@ export const AppDataProvider = ({ children }) => {
         Group.list()
       ]);
 
+      console.log('🔍 API Data received:', { 
+        players: players?.length, 
+        sessions: sessions?.length, 
+        transactions: transactions?.length, 
+        groups: groups?.length 
+      });
+
       const data = { players, sessions, transactions, groups };
       setCachedData(cacheKey, data);
       dispatch({ type: ActionTypes.SET_DATA, payload: data });

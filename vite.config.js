@@ -19,9 +19,11 @@ function copy404Plugin() {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command, mode }) => {
+  return {
   plugins: [react(), copy404Plugin()],
-  // base: '/PokerCashFlow/',
+  // Use different base for dev vs build
+  base: command === 'serve' ? '/' : './',
   server: {
     host: 'localhost',
     port: 5173,
@@ -51,5 +53,6 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html'),
       },
     },
-  },
+  }
+}
 }) 

@@ -1,14 +1,14 @@
 const CACHE_NAME = 'poker-cash-flow-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/dashboard',
-  '/players',
-  '/sessions',
-  '/groups',
-  '/settings',
-  '/manifest.json',
-  '/favicon.svg'
+  '/PokerCashFlow/',
+  '/PokerCashFlow/index.html',
+  '/PokerCashFlow/dashboard',
+  '/PokerCashFlow/players',
+  '/PokerCashFlow/sessions',
+  '/PokerCashFlow/groups',
+  '/PokerCashFlow/settings',
+  '/PokerCashFlow/manifest.json',
+  '/PokerCashFlow/favicon.svg'
 ];
 
 // Install event - cache resources
