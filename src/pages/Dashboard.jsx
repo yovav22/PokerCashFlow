@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { format } from "date-fns";
 import html2canvas from "html2canvas";
-import { Player } from "@/api/entities";
-import { Session } from "@/api/entities";
-import { Transaction } from "@/api/entities";
+import { useAppData } from "@/context/AppDataContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
@@ -35,6 +35,7 @@ import {
   Crown,
   Share,
   Star,
+  Filter,
 } from "lucide-react";
 import LastSessionStats from "../components/dashboard/LastSessionStats";
 import { getCurrentGroup } from "@/utils/groupStorage";
@@ -47,9 +48,26 @@ import {
 } from "@/components/ui/dialog";
 
 export default function Dashboard() {
-  const [allPlayers, setAllPlayers] = useState([]);
+  // Global state from context
+  const {
+    players: allPlayers = [],
+    sessions: allSessions = [],
+    transactions: allTransactions = [],
+    loading: globalLoading = false,
+    getGroupData
+  } = useAppData() || {};
+
+  // Get group-specific data (memoized to prevent infinite re-renders)
+  const groupData = useMemo(() => {
+    return getGroupData ? getGroupData() : null;
+  }, [getGroupData]);
+  
+  const groupPlayers = groupData?.players || [];
+  const groupTransactions = groupData?.transactions || [];
+  const completedSessions = groupData?.completedSessions || [];
+
+  // Local state for computed data
   const [topPlayers, setTopPlayers] = useState([]);
-  const [recentTransactions, setRecentTransactions] = useState([]);
   const [statistics, setStatistics] = useState({
     totalGames: 0,
     totalPlayers: 0,
@@ -64,31 +82,29 @@ export default function Dashboard() {
   });
   const [lastSession, setLastSession] = useState(null);
   const [lastSessionTransactions, setLastSessionTransactions] = useState([]);
-  const [groupPlayers, setGroupPlayers] = useState([]);
-  const [groupTransactions, setGroupTransactions] = useState([]);
-  const [completedSessions, setCompletedSessions] = useState([]);
+  
+  // UI state
   const lastSessionRef = useRef(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [downloadedFileName, setDownloadedFileName] = useState("");
   const [showLeaderboardShareDialog, setShowLeaderboardShareDialog] = useState(false);
   const [downloadedLeaderboardFileName, setDownloadedLeaderboardFileName] = useState("");
   const leaderboardRef = useRef(null);
-  const [loading, setLoading] = useState(true);
+  const [minGamesFilter, setMinGamesFilter] = useState(3);
+  
+  const loading = globalLoading;
 
+  // Recalculate dashboard data when group data changes
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [groupData, allPlayers]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(() => {
     console.log('loadDashboardData called');
-    setLoading(true);
-    console.log('Loading set to true');
-    const group = getCurrentGroup();
-    console.log('Current group:', group);
     
-    // Check if group exists before proceeding
-    if (!group) {
-      console.warn("No group selected or group not found");
+    // Check if group data exists
+    if (!groupData || !allPlayers.length) {
+      console.warn("No group data or players available");
       // Set empty states
       setStatistics({
         totalGames: 0,
@@ -103,28 +119,13 @@ export default function Dashboard() {
         playerRetentionRate: 0,
       });
       setTopPlayers([]);
-      setRecentTransactions([]);
       setLastSession(null);
       setLastSessionTransactions([]);
-      setGroupPlayers([]);
-      setGroupTransactions([]);
-      setCompletedSessions([]);
       return;
     }
 
-    const players = await Player.list();
-    setAllPlayers(players);
-
-    const transactions = await Transaction.list();
-    const groupTransactions = transactions.filter(t => t.group_id === group.id);
-    setRecentTransactions(groupTransactions);
-
-    const sessions = await Session.list();
-    const groupSessions = sessions.filter(s => s.group_id === group.id);
-    const completedSessions = groupSessions.filter((s) => s.status === "completed");
-
-    // Get all players in this group
-    const groupPlayers = players.filter(p => group.players && group.players.includes(p.id));
+    // Use data from context - no need for API calls
+    const players = allPlayers;
     
     // Calculate stats only for players who have played in this group
     const activePlayers = groupPlayers.filter(p => {
@@ -249,7 +250,7 @@ export default function Dashboard() {
     });
 
     // Find last completed session and its transactions
-    const lastCompletedSession = [...groupSessions]
+    const lastCompletedSession = [...completedSessions]
       .filter(s => s.status === "completed")
       .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
@@ -293,14 +294,62 @@ export default function Dashboard() {
       setLastSessionTransactions([]);
     }
 
-    setGroupPlayers(groupPlayers);
-    setGroupTransactions(groupTransactions);
-    setCompletedSessions(completedSessions);
-    console.log('Loading set to false');
-    setLoading(false);
-  };
+    console.log('Dashboard data loaded');
+  }, [groupData, allPlayers]);
 
-  const shareLastSession = async () => {
+  // Get recent transactions (last 10)
+  const recentTransactions = useMemo(() => {
+    if (!groupTransactions || !Array.isArray(groupTransactions)) {
+      return [];
+    }
+    return [...groupTransactions]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 10);
+  }, [groupTransactions]);
+
+  // Calculate sorted players for leaderboard
+  const sortedPlayersForLeaderboard = useMemo(() => {
+    if (!groupPlayers || !Array.isArray(groupPlayers) || groupPlayers.length === 0) {
+      return [];
+    }
+    
+    return groupPlayers
+      .map(player => {
+        // Calculate player's transactions for this group
+        const playerTransactions = (groupTransactions || []).filter(t => 
+          t.player_id === player.id
+        );
+        
+        const totalBuyIn = playerTransactions
+          .filter(t => t.is_buy_in)
+          .reduce((sum, t) => sum + t.amount, 0);
+          
+        const totalCashOut = playerTransactions
+          .filter(t => !t.is_buy_in)
+          .reduce((sum, t) => sum + t.amount, 0);
+          
+        const totalEarnings = totalCashOut - totalBuyIn;
+        
+        // Calculate games played in this group
+        const gamesPlayed = (completedSessions || []).filter(s => 
+          s.players.includes(player.id)
+        ).length;
+
+        return {
+          ...player,
+          gamesPlayed,
+          totalBuyIn,
+          totalCashOut,
+          totalEarnings,
+          avgPerGame: gamesPlayed ? totalEarnings / gamesPlayed : 0,
+          winRate: totalBuyIn ? (totalEarnings / totalBuyIn) * 100 : 0
+        };
+      })
+      .filter(player => player.gamesPlayed >= minGamesFilter)
+      .sort((a, b) => b.totalEarnings - a.totalEarnings);
+  }, [groupPlayers, groupTransactions, completedSessions, minGamesFilter]);
+
+  const shareLastSession = useCallback(async () => {
     if (!lastSessionRef.current || !lastSession) {
       alert("No completed session available to share.");
       return;
@@ -328,16 +377,16 @@ export default function Dashboard() {
       console.error('Error sharing:', error);
       alert('Failed to share the session results. Please try again.');
     }
-  };
+  }, [lastSession]);
 
-  const openWhatsApp = () => {
+  const openWhatsApp = useCallback(() => {
     const messageText = `Last completed poker session from ${format(new Date(lastSession.date), "MMMM d, yyyy")}`;
     const encodedText = encodeURIComponent(messageText);
     window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     setShowShareDialog(false);
-  };
+  }, [lastSession]);
 
-  const shareLeaderboard = async () => {
+  const shareLeaderboard = useCallback(async () => {
     if (!leaderboardRef.current || groupPlayers.length === 0) {
       alert("No leaderboard data available to share.");
       return;
@@ -365,14 +414,14 @@ export default function Dashboard() {
       console.error('Error sharing:', error);
       alert('Failed to share the leaderboard. Please try again.');
     }
-  };
+  }, [groupPlayers.length]);
 
-  const openWhatsAppForLeaderboard = () => {
+  const openWhatsAppForLeaderboard = useCallback(() => {
     const messageText = `🏆 Poker League Leaderboard - ${format(new Date(), "MMMM d, yyyy")}`;
     const encodedText = encodeURIComponent(messageText);
     window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     setShowLeaderboardShareDialog(false);
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -491,15 +540,30 @@ export default function Dashboard() {
                   Career performance of top poker players
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Badge variant="outline" className="flex items-center gap-1 bg-blue-50">
                   <Users className="w-4 h-4" />
-                  {topPlayers.length} Players
+                  {sortedPlayersForLeaderboard.length} Players
                 </Badge>
                 <Badge variant="outline" className="flex items-center gap-1 bg-green-50 text-black">
                   <Wallet className="w-4 h-4" />
                   ₪{statistics.totalMoneyPlayed} Played
                 </Badge>
+                <div className="flex items-center gap-2 ml-2">
+                  <Label htmlFor="min-games" className="text-sm text-gray-600 flex items-center gap-1">
+                    <Filter className="w-4 h-4" />
+                    Min Games:
+                  </Label>
+                  <Input
+                    id="min-games"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={minGamesFilter}
+                    onChange={(e) => setMinGamesFilter(parseInt(e.target.value) || 1)}
+                    className="w-16 h-8 text-center"
+                  />
+                </div>
                 <Button
                   variant="outline"
                   size="icon"
@@ -622,47 +686,14 @@ export default function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {groupPlayers.length === 0 ? (
+                  {sortedPlayersForLeaderboard.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         No player data available yet. Start a game session to see player rankings.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    groupPlayers
-                      .map(player => {
-                        // Calculate player's transactions for this group
-                        const playerTransactions = groupTransactions.filter(t => 
-                          t.player_id === player.id
-                        );
-                        
-                        const totalBuyIn = playerTransactions
-                          .filter(t => t.is_buy_in)
-                          .reduce((sum, t) => sum + t.amount, 0);
-                          
-                        const totalCashOut = playerTransactions
-                          .filter(t => !t.is_buy_in)
-                          .reduce((sum, t) => sum + t.amount, 0);
-                          
-                        const totalEarnings = totalCashOut - totalBuyIn;
-                        
-                        // Calculate games played in this group
-                        const gamesPlayed = completedSessions.filter(s => 
-                          s.players.includes(player.id)
-                        ).length;
-
-                        return {
-                          ...player,
-                          gamesPlayed,
-                          totalBuyIn,
-                          totalCashOut,
-                          totalEarnings,
-                          avgPerGame: gamesPlayed ? totalEarnings / gamesPlayed : 0,
-                          winRate: totalBuyIn ? (totalEarnings / totalBuyIn) * 100 : 0
-                        };
-                      })
-                      .filter(player => player.gamesPlayed > 0)
-                      .sort((a, b) => b.totalEarnings - a.totalEarnings)
+                    sortedPlayersForLeaderboard
                       .map((player, index) => (
                         <TableRow 
                           key={player.id}

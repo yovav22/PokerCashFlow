@@ -1,14 +1,14 @@
 const CACHE_NAME = 'poker-cash-flow-v1';
 const urlsToCache = [
-  '/PokerCashFlow/',
-  '/PokerCashFlow/index.html',
-  '/PokerCashFlow/dashboard',
-  '/PokerCashFlow/players',
-  '/PokerCashFlow/sessions',
-  '/PokerCashFlow/groups',
-  '/PokerCashFlow/settings',
-  '/PokerCashFlow/manifest.json',
-  '/PokerCashFlow/favicon.svg'
+  '/',
+  '/index.html',
+  '/dashboard',
+  '/players',
+  '/sessions',
+  '/groups',
+  '/settings',
+  '/manifest.json',
+  '/favicon.svg'
 ];
 
 // Install event - cache resources
@@ -51,6 +51,11 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Skip service worker for development files
+  if (url.pathname.includes('/src/') || url.pathname.includes('/@vite/') || url.pathname.includes('/@fs/')) {
+    return;
+  }
 
   // Handle SPA routing - serve index.html for navigation requests
   if (request.mode === 'navigate') {

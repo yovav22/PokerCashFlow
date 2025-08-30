@@ -21,9 +21,15 @@ function copy404Plugin() {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), copy404Plugin()],
-  base: '/PokerCashFlow/',
+  // base: '/PokerCashFlow/',
   server: {
-    allowedHosts: true
+    host: 'localhost',
+    port: 5173,
+    strictPort: true,
+    hmr: {
+      port: 5173,
+      host: 'localhost'
+    }
   },
   resolve: {
     alias: {

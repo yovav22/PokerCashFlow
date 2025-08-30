@@ -70,7 +70,7 @@ function PagesContent() {
 
 export default function Pages() {
     return (
-        <Router basename="/PokerCashFlow">
+        <Router>
             <PagesContent />
         </Router>
     );

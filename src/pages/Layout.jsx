@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
@@ -43,7 +43,7 @@ const groupIcons = {
 };
 
 export default function Layout({ children, currentPageName }) {
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [loadingGroups, setLoadingGroups] = useState(true);
@@ -92,7 +92,7 @@ export default function Layout({ children, currentPageName }) {
     loadGroups();
   }, []);
 
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     try {
       setLoadingGroups(true);
       const fetchedGroups = await Group.list();
@@ -100,25 +100,41 @@ export default function Layout({ children, currentPageName }) {
       saveGroups(fetchedGroups);
       
       const savedGroupId = getSelectedGroupId();
-      setSelectedGroupId(savedGroupId);
       
       if (fetchedGroups.length === 0) {
         setSelectedGroupId(null);
+      } else if (!savedGroupId || isNaN(savedGroupId)) {
+        // If no group is selected or saved group ID is invalid, select the first group
+        const firstGroupId = fetchedGroups[0].id;
+        setSelectedGroupId(firstGroupId);
+        saveSelectedGroupId(firstGroupId);
+      } else {
+        // Check if the saved group still exists in the fetched groups
+        const groupExists = fetchedGroups.some(group => group.id === savedGroupId);
+        if (groupExists) {
+          setSelectedGroupId(savedGroupId);
+        } else {
+          // If saved group no longer exists, select the first available group
+          const firstGroupId = fetchedGroups[0].id;
+          setSelectedGroupId(firstGroupId);
+          saveSelectedGroupId(firstGroupId);
+        }
       }
     } catch (error) {
       console.error("Error loading groups:", error);
     } finally {
       setLoadingGroups(false);
     }
-  };
+  }, []);
 
-  const handleGroupChange = async (groupId) => {
+  const handleGroupChange = useCallback(async (groupId) => {
     setSelectedGroupId(groupId);
     saveSelectedGroupId(groupId);
     window.location.reload();
-  };
+  }, []);
 
-  const navItems = [
+  // Memoize navigation items to prevent recreation on every render
+  const navItems = useMemo(() => [
     {
       name: "Dashboard",
       icon: LayoutDashboard,
@@ -149,13 +165,18 @@ export default function Layout({ children, currentPageName }) {
       icon: Settings,
       href: createPageUrl("Settings")
     }
-  ];
+  ], []);
 
-  const getBarColor = (value) => {
+  // Memoize utility functions
+  const getBarColor = useCallback((value) => {
     if (value > 100) return "bg-green-500"; // High value
     if (value > 50) return "bg-yellow-500"; // Medium value
     return "bg-red-500"; // Low value
-  };
+  }, []);
+
+  // Memoize sidebar handlers
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -186,7 +207,7 @@ export default function Layout({ children, currentPageName }) {
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeSidebar}
         />
       )}
 
@@ -211,13 +232,16 @@ export default function Layout({ children, currentPageName }) {
                   c-1.381,0-2.5-1.119-2.5-2.5s1.119-2.5,2.5-2.5s2.5,1.119,2.5,2.5S11.881,15,10.5,15z"/>
               </svg>
             </div>
-            <h1 className="text-xl font-bold">Poker Cashflow</h1>
+            <div>
+              <h1 className="text-xl font-bold">Poker Cashflow</h1>
+              <p className="text-xs text-gray-500">Version 1.0.0</p>
+            </div>
           </div>
           <Button
             variant="ghost"
             size="icon"
             className="lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+            onClick={closeSidebar}
           >
             <X className="h-6 w-6" />
           </Button>
@@ -261,7 +285,7 @@ export default function Layout({ children, currentPageName }) {
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors",
                 currentPageName === item.name && "bg-red-50 text-red-700"
               )}
-              onClick={() => setSidebarOpen(false)}
+              onClick={closeSidebar}
             >
               <item.icon className="w-5 h-5" />
               {item.name}
@@ -275,7 +299,7 @@ export default function Layout({ children, currentPageName }) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSidebarOpen(true)}
+            onClick={openSidebar}
           >
             <Menu className="h-6 w-6" />
           </Button>

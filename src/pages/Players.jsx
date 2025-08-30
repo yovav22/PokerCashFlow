@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Player } from "@/api/entities";
 import { Session } from "@/api/entities";
 import { Transaction } from "@/api/entities";
@@ -130,7 +130,7 @@ export default function Players() {
     loadPlayers();
   }, []);
 
-  const loadPlayers = async () => {
+  const loadPlayers = useCallback(async () => {
     setLoading(true);
     const group = getCurrentGroup();
     const playersIdsInGroup = group ? group.players : [];
@@ -200,23 +200,22 @@ export default function Players() {
 
     setPerformanceHistory(performanceData);
     setLoading(false);
-  };
+  }, []);
 
-  // Filter players based on search query
-  const filteredPlayers = players.filter((player) =>
-    player.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => a.id - b.id);
+  // Memoize filtered players to avoid recalculation on every render
+  const filteredPlayers = useMemo(() => 
+    players.filter((player) =>
+      player.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ).sort((a, b) => a.id - b.id),
+    [players, searchQuery]
+  );
 
-  // Sort the data for each chart
-  const earningsSorted = [...performanceHistory].sort(
-    (a, b) => b.earnings - a.earnings
-  );
-  const avgSorted = [...performanceHistory].sort(
-    (a, b) => b.averagePerGame - a.averagePerGame
-  );
-  const winRateSorted = [...performanceHistory].sort(
-    (a, b) => b.winRate - a.winRate
-  );
+  // Memoize sorted data for charts
+  const chartData = useMemo(() => ({
+    earningsSorted: [...performanceHistory].sort((a, b) => b.earnings - a.earnings),
+    avgSorted: [...performanceHistory].sort((a, b) => b.averagePerGame - a.averagePerGame),
+    winRateSorted: [...performanceHistory].sort((a, b) => b.winRate - a.winRate)
+  }), [performanceHistory]);
 
   const handleAddPlayer = async (e) => {
     e.preventDefault();
@@ -1054,7 +1053,7 @@ export default function Players() {
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={earningsSorted}
+                      data={chartData.earningsSorted}
                       layout="vertical"
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
@@ -1074,12 +1073,12 @@ export default function Players() {
                       <Tooltip
                         formatter={(value) => [`₪${Math.round(value)}`, "Earnings"]}
                         labelFormatter={(value) =>
-                          earningsSorted.find((item) => item.name === value)
+                          chartData.earningsSorted.find((item) => item.name === value)
                             ?.fullName || value
                         }
                       />
                       <Bar dataKey="earnings" fill="#10b981" name="Earnings">
-                        {earningsSorted.map((entry, index) => (
+                        {chartData.earningsSorted.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={entry.earnings >= 0 ? "#10b981" : "#ef4444"}
@@ -1102,7 +1101,7 @@ export default function Players() {
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={avgSorted}
+                      data={chartData.avgSorted}
                       layout="vertical"
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
@@ -1122,12 +1121,12 @@ export default function Players() {
                       <Tooltip
                         formatter={(value) => [`₪${Math.round(value)}`, "Avg/Game"]}
                         labelFormatter={(value) =>
-                          avgSorted.find((item) => item.name === value)?.fullName ||
+                          chartData.avgSorted.find((item) => item.name === value)?.fullName ||
                           value
                         }
                       />
                       <Bar dataKey="averagePerGame" name="Average per Game">
-                        {avgSorted.map((entry, index) => (
+                        {chartData.avgSorted.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={
@@ -1154,7 +1153,7 @@ export default function Players() {
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={winRateSorted}
+                      data={chartData.winRateSorted}
                       layout="vertical"
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
@@ -1174,12 +1173,12 @@ export default function Players() {
                       <Tooltip
                         formatter={(value) => [`${Math.round(value)}%`, "Win Rate"]}
                         labelFormatter={(value) =>
-                          winRateSorted.find((item) => item.name === value)
+                          chartData.winRateSorted.find((item) => item.name === value)
                             ?.fullName || value
                         }
                       />
                       <Bar dataKey="winRate" name="Win Rate">
-                        {winRateSorted.map((entry, index) => (
+                        {chartData.winRateSorted.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={

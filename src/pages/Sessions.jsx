@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Session } from "@/api/entities";
-import { Player } from "@/api/entities";
-import { Transaction } from "@/api/entities";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useAppData } from "@/context/AppDataContext";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,11 +52,24 @@ import {
 } from "@/components/ui/table";
 
 export default function Sessions() {
+  // Global state from context
+  const {
+    sessions: allSessions,
+    players: allPlayers,
+    transactions: allTransactions,
+    loading: globalLoading,
+    error: globalError,
+    getGroupData,
+    createSession,
+    updateSession,
+    deleteSession: deleteSessionFromContext,
+    createTransaction
+  } = useAppData();
+
+  // Local UI state
   const [settings, setSettings] = useState({
     max_players: 7
   });
-  const [sessions, setSessions] = useState([]);
-  const [players, setPlayers] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
@@ -66,77 +77,53 @@ export default function Sessions() {
   const [transactionAmount, setTransactionAmount] = useState("");
   const [transactionPlayer, setTransactionPlayer] = useState("");
   const [transactionType, setTransactionType] = useState("buy_in");
-  const [sessionTransactions, setSessionTransactions] = useState([]);
-  const [displayedTransactions, setDisplayedTransactions] = useState([]);
   const [sessionForSummary, setSessionForSummary] = useState(null);
   const [playerToRegister, setPlayerToRegister] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
 
+  // Get group-specific data (memoized to prevent infinite re-renders)
+  const groupData = useMemo(() => {
+    return getGroupData ? getGroupData() : null;
+  }, [getGroupData]);
+  
+  const sessions = groupData?.sessions || [];
+  const sessionTransactions = groupData?.transactions || [];
+  
+  // Filter players to only show those in the current group
+  const groupPlayers = groupData?.players || [];
+  const currentGroup = getCurrentGroup();
+  const players = groupPlayers.filter(player => 
+    currentGroup?.players?.includes(player.id)
+  );
+  
+  // Filter transactions for display
+  const [displayedTransactions, setDisplayedTransactions] = useState([]);
+  
+  const loading = globalLoading;
+  const error = globalError;
+
+  // Update displayed transactions when session transactions change
   useEffect(() => {
-    const initializeData = async () => {
-      try {
-        await loadData();
-      } catch (err) {
-        console.error("Error initializing data:", err);
-        setError("Failed to initialize data. Please reload the page.");
-      }
-    };
-
-    initializeData();
-  }, [retryAttempt]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const [sessionsData, playersData, transactionsData] = await Promise.all([
-        Session.list(),
-        Player.list(),
-        Transaction.list()
-      ]);
-
-      console.log('Loaded transactions:', transactionsData);
-
-      const group = getCurrentGroup();
-      const playersIdsInGroup = group ? group.players : [];
-      const playersInGroup = playersData.filter(p => playersIdsInGroup.includes(p.id));
-      const sessionsInGroup = sessionsData.filter(s => s.group_id == group.id);
-      const transactionsInGroup = transactionsData.filter(t => t.group_id == group.id);
-
-      setSessions(sessionsInGroup);
-      setPlayers(playersInGroup);
-      setSessionTransactions(transactionsInGroup);
-      setDisplayedTransactions(transactionsInGroup);
-      setLoading(false);
-    } catch (err) {
-      console.error("Error loading data:", err);
-      setError("Failed to load data. Please try again.");
-      setLoading(false);
-    }
-  };
+    setDisplayedTransactions(sessionTransactions);
+  }, [sessionTransactions]);
 
   const createNewSession = async () => {
     const group = getCurrentGroup();
     const today = new Date();
     const localDate = format(today, 'yyyy-MM-dd');
     
-    await Session.create({
+    await createSession({
       group_id: group.id,
       date: localDate,
       status: "registration",
       max_players: settings.max_players,
       players: []
     });
-    loadData();
   };
 
   const updateSessionHost = async (sessionId, hostId) => {
     if (!sessionId) return;
-    await Session.update(sessionId, { host_id: hostId });
-    loadData();
+    await updateSession(sessionId, { host: hostId });
   };
 
   const registerForSession = async (sessionId, playerId) => {
@@ -156,12 +143,11 @@ export default function Sessions() {
       }
       
       const updatedPlayers = [...registeredPlayers, playerId];
-      await Session.update(sessionId, {
+      await updateSession(sessionId, {
         players: updatedPlayers
       });
 
       setPlayerToRegister("");
-      loadData();
     } catch (error) {
       console.error("Error registering player:", error);
       alert("Error registering player. Please try again.");
@@ -173,10 +159,9 @@ export default function Sessions() {
     if (!session) return;
 
     const updatedPlayers = session.players.filter(id => id !== playerId);
-    await Session.update(sessionId, {
+    await updateSession(sessionId, {
       players: updatedPlayers
     });
-    loadData();
   };
 
   const startSession = async (sessionId) => {
@@ -184,8 +169,7 @@ export default function Sessions() {
     if (!session) return;
 
     try {
-      await Session.update(sessionId, { status: "active" });
-      loadData();
+      await updateSession(sessionId, { status: "active" });
     } catch (error) {
       console.error("Error starting session:", error);
       alert("Error starting session. Please try again.");
@@ -193,8 +177,7 @@ export default function Sessions() {
   };
 
   const endSession = async (sessionId) => {
-    await Session.update(sessionId, { status: "completed" });
-    loadData();
+    await updateSession(sessionId, { status: "completed" });
   };
 
   const deleteSession = async (sessionId) => {
@@ -228,14 +211,12 @@ export default function Sessions() {
         }
       }
 
-      await Session.delete(sessionId);
+      await deleteSessionFromContext(sessionId);
       setSessionToDelete(null);
-      loadData();
     } catch (error) {
       console.error("Error deleting session:", error);
       alert("There was an error deleting the session. Please try again.");
       setSessionToDelete(null);
-      loadData();
     }
   };
 
@@ -297,7 +278,7 @@ export default function Sessions() {
       const now = new Date();
       const localDateTime = format(now, "yyyy-MM-dd'T'HH:mm:ss'+00:00'");
       
-      const newTransaction = await Transaction.create({
+      const newTransaction = await createTransaction({
         session_id: selectedSessionForTransaction.id,
         group_id: group.id,
         player_id: transactionPlayer,
